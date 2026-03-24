@@ -1,0 +1,125 @@
+{
+  "sessions": {
+    "session_aidetn": {
+      "batches": [
+        {
+          "batchId": 1,
+          "messages": [
+            "Hello"
+          ],
+          "combined": "Hello",
+          "savedAt": "2026-03-24T04:48:03.225Z"
+        },
+        {
+          "batchId": 2,
+          "messages": [
+            "Im planning to buy some oranges"
+          ],
+          "combined": "Im planning to buy some oranges",
+          "savedAt": "2026-03-24T04:48:15.392Z"
+        },
+        {
+          "batchId": 3,
+          "messages": [
+            "so what is the cost?",
+            "for 1kg"
+          ],
+          "combined": "so what is the cost? for 1kg",
+          "savedAt": "2026-03-24T04:48:26.498Z"
+        },
+        {
+          "batchId": 4,
+          "messages": [
+            "maybe to be specific 1kg of oranges"
+          ],
+          "combined": "maybe to be specific 1kg of oranges",
+          "savedAt": "2026-03-24T04:48:46.568Z"
+        },
+        {
+          "batchId": 5,
+          "messages": [
+            "can you give me the details?"
+          ],
+          "combined": "can you give me the details?",
+          "savedAt": "2026-03-24T04:49:45.189Z"
+        }
+      ]
+    },
+    "sess_021iz": {
+      "batches": [
+        {
+          "batchId": 1,
+          "messages": [
+            "Hello I'm planning to buy oranges",
+            "so can you tell me the price range",
+            "for 1 kg?"
+          ],
+          "combined": "Hello I'm planning to buy oranges so can you tell me the price range for 1 kg?",
+          "flushReason": "silence_timer",
+          "messageCount": 3,
+          "silenceMsUsed": 23968,
+          "savedAt": "2026-03-24T04:59:21.379Z"
+        },
+        {
+          "batchId": 2,
+          "messages": [
+            "or no",
+            "i need apples also",
+            "for 5kgs how about it?"
+          ],
+          "combined": "or no i need apples also for 5kgs how about it?",
+          "flushReason": "silence_timer",
+          "messageCount": 3,
+          "silenceMsUsed": 20340,
+          "savedAt": "2026-03-24T05:01:24.840Z"
+        }
+      ]
+    },
+    "sess_l8vc5": {
+      "batches": [
+        {
+          "batchId": 1,
+          "messages": [
+            "Can i get to know the price of oranges?",
+            "for 1kg?"
+          ],
+          "combined": "Can i get to know the price of oranges? for 1kg?",
+          "flushReason": "silence_timer",
+          "messageCount": 2,
+          "silenceMsUsed": 20000,
+          "savedAt": "2026-03-24T05:07:39.354Z"
+        },
+        {
+          "batchId": 2,
+          "messages": [
+            "oh i forgot to add apples also",
+            "can you also give me the price of 5kgs of it"
+          ],
+          "combined": "oh i forgot to add apples also can you also give me the price of 5kgs of it",
+          "flushReason": "silence_timer",
+          "messageCount": 2,
+          "silenceMsUsed": 40073,
+          "savedAt": "2026-03-24T05:08:53.507Z"
+        }
+      ]
+    },
+    "sess_p36qs": {
+      "batches": [
+        {
+          "batchId": 1,
+          "messages": [
+            "Im looking to buy oranges",
+            "maybe for 1kg"
+          ],
+          "combined": "Im looking to buy oranges maybe for 1kg",
+          "flushReason": "silence_40s",
+          "messageCount": 2,
+          "batchMsUsed": 40000,
+          "savedAt": "2026-03-24T05:21:50.413Z"
+        }
+      ],
+      "groupedAt": null,
+      "groupedCombined": null
+    }
+  }
+}

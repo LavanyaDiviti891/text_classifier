@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spec Chat</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #ece5dd; }
+
+/* ── Layout ── */
+.app { display: flex; height: 100vh; overflow: hidden; }
+.chat-col  { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #ece5dd; position: relative; }
+.right-col { width: 340px; flex-shrink: 0; background: #fff; border-left: 1px solid #e0ddd8; display: flex; flex-direction: column; }
+
+/* ── Chat header ── */
+.chat-header {
+  background: #075e54;
+  color: #fff;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  z-index: 10;
+}
+.hdr-avatar { width: 38px; height: 38px; border-radius: 50%; background: #25d366; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: #fff; flex-shrink: 0; }
+.hdr-info h3 { font-size: 15px; font-weight: 500; }
+.hdr-sub  { font-size: 12px; opacity: .75; margin-top: 1px; }
+.hdr-actions { margin-left: auto; display: flex; gap: 10px; }
+.hdr-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.8); font-size: 18px; padding: 4px; line-height: 1; }
+.hdr-btn:hover { color: #fff; }
+
+/* ── Dual timer bars ── */
+.timer-bars { flex-shrink: 0; }
+/* Batch bar (40s) — green */
+.batch-bar { height: 4px; background: rgba(0,0,0,.08); overflow: hidden; display: none; }
+.batch-bar.active { display: block; }
+.batch-fill { height: 100%; background: #25d366; width: 100%; }
+/* Session bar (60s) — orange */
+.session-bar { height: 3px; background: rgba(0,0,0,.05); overflow: hidden; display: none; }
+.session-bar.active { display: block; }
+.session-fill { height: 100%; background: #ff9800; width: 100%; }
+
+/* Bar labels */
+.bar-labels {
+  display: none;
+  padding: 2px 12px;
+  background: rgba(0,0,0,.03);
+  font-size: 10px;
+  color: #888;
+  justify-content: space-between;
+}
+.bar-labels.active { display: flex; }
+
+/* ── Messages ── */
+.messages-wrap { flex: 1; overflow-y: auto; padding: 10px 16px; display: flex; flex-direction: column; gap: 4px; }
+
+.date-sep { text-align: center; margin: 8px 0; }
+.date-sep span { background: #e1f2fb; color: #54656f; font-size: 11.5px; padding: 4px 12px; border-radius: 8px; }
+
+.msg-row { display: flex; align-items: flex-end; gap: 6px; max-width: 72%; }
+.msg-row.out { align-self: flex-end; flex-direction: row-reverse; }
+.msg-row.in  { align-self: flex-start; }
+.msg-row.sys { align-self: center; max-width: 85%; }
+
+.msg-av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; margin-bottom: 2px; }
+.av-cs  { background: #25d366; color: #fff; }
+
+.bubble {
+  padding: 6px 10px 7px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  position: relative;
+  word-break: break-word;
+}
+.bubble.out { background: #dcf8c6; color: #111; border-bottom-right-radius: 2px; }
+.bubble.in  { background: #fff; color: #111; border-bottom-left-radius: 2px; }
+.bubble.sys-bubble { background: #fffde7; color: #5d4037; font-size: 13px; border-radius: 8px; padding: 7px 14px; text-align: center; }
+.bubble-meta { font-size: 11px; color: #999; margin-top: 2px; text-align: right; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.bubble.in .bubble-meta { color: #aaa; justify-content: flex-start; }
+.tick { font-size: 12px; color: #4fc3f7; }
+
+.status-tag { font-size: 10.5px; font-weight: 500; padding: 1px 6px; border-radius: 10px; margin-left: 4px; vertical-align: middle; }
+.st-buf  { background: #fff3e0; color: #e65100; }
+.st-done { background: #e8f5e9; color: #2e7d32; }
+.st-key  { background: #ede7f6; color: #4527a0; }
+.st-man  { background: #e3f2fd; color: #1565c0; }
+.st-conf { background: #e8f5e9; color: #1b5e20; }
+.st-grp  { background: #fce4ec; color: #880e4f; }
+
+.typing-bubble { display: flex; align-items: center; gap: 4px; padding: 10px 14px; background: #fff; border-radius: 8px; border-bottom-left-radius: 2px; }
+.typing-dot { width: 7px; height: 7px; border-radius: 50%; background: #aaa; animation: tdot 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes tdot { 0%,60%,100% { transform: translateY(0); opacity:.5; } 30% { transform: translateY(-5px); opacity:1; } }
+
+.nudge-btns { display: flex; gap: 8px; margin-top: 8px; justify-content: center; }
+.nbtn { padding: 5px 16px; border-radius: 20px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; }
+.nbtn-yes { background: #25d366; color: #fff; }
+.nbtn-yes:hover { background: #1da851; }
+.nbtn-no  { background: #f0f0f0; color: #333; }
+.nbtn-no:hover  { background: #e0e0e0; }
+.nbtn:disabled { opacity: .4; cursor: default; }
+
+/* ── Input bar ── */
+.input-bar { padding: 8px 12px; background: #f0f0f0; display: flex; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.input-box { flex: 1; background: #fff; border-radius: 22px; padding: 9px 14px; font-size: 14px; outline: none; border: none; resize: none; max-height: 120px; overflow-y: auto; line-height: 1.4; color: #111; font-family: inherit; }
+.input-box::placeholder { color: #aaa; }
+.send-btn { width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer; background: #075e54; color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .15s; }
+.send-btn:hover { background: #128c7e; }
+.done-btn { padding: 0 16px; height: 44px; border-radius: 22px; border: none; cursor: pointer; background: #25d366; color: #fff; font-size: 13px; font-weight: 600; flex-shrink: 0; letter-spacing: .3px; }
+.done-btn:hover { background: #1da851; }
+
+/* ── Quick chips ── */
+.quick-bar { padding: 6px 12px 2px; background: #f0f0f0; display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; border-top: 1px solid #ddd; }
+.qchip { padding: 4px 10px; border-radius: 14px; border: 1px solid #ccc; background: #fff; font-size: 12px; color: #333; cursor: pointer; white-space: nowrap; }
+.qchip:hover { background: #e8e8e8; }
+
+/* ── Right panel ── */
+.rp-header { padding: 14px 16px; border-bottom: 1px solid #eee; }
+.rp-header h3 { font-size: 14px; font-weight: 600; color: #333; }
+.rp-subhead { font-size: 11px; color: #999; margin-top: 2px; }
+
+.rp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px; border-bottom: 1px solid #eee; }
+.stat-box { background: #f7f7f7; border-radius: 8px; padding: 8px 10px; }
+.stat-val { font-size: 20px; font-weight: 600; color: #075e54; line-height: 1; }
+.stat-lbl { font-size: 11px; color: #888; margin-top: 3px; }
+
+.live-section { padding: 12px 14px; border-bottom: 1px solid #eee; }
+.section-title { font-size: 11px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+.buf-item { font-size: 12.5px; color: #333; padding: 4px 0; border-bottom: 1px solid #f5f5f5; display: flex; gap: 6px; }
+.buf-num  { color: #ccc; flex-shrink: 0; font-size: 11px; margin-top: 2px; }
+.buf-empty { font-size: 12px; color: #ccc; font-style: italic; }
+
+.save-btn { width: 100%; margin-top: 8px; padding: 7px; border-radius: 8px; border: 1.5px solid #075e54; background: transparent; color: #075e54; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.save-btn:hover { background: #075e5410; }
+.save-btn:disabled { opacity: .3; cursor: default; }
+
+/* Group summary card */
+.group-card {
+  margin: 10px 14px;
+  background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+  border: 1.5px solid #f48fb1;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.gc-title { font-size: 12px; font-weight: 700; color: #880e4f; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.gc-badge { background: #880e4f; color: #fff; font-size: 10px; padding: 1px 7px; border-radius: 10px; }
+.gc-text  { font-size: 12px; color: #444; line-height: 1.5; background: #fff; border-radius: 6px; padding: 6px 8px; margin-bottom: 5px; max-height: 80px; overflow-y: auto; }
+.gc-meta  { font-size: 11px; color: #999; }
+
+.batch-list { flex: 1; overflow-y: auto; padding: 10px 14px; }
+.batch-card { background: #f9f9f9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid #eee; }
+.bc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.bc-title  { font-size: 13px; font-weight: 600; color: #222; }
+.bc-tag    { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; }
+.tag-timer { background: #fff3e0; color: #bf360c; }
+.tag-key   { background: #ede7f6; color: #4527a0; }
+.tag-conf  { background: #e8f5e9; color: #1b5e20; }
+.tag-man   { background: #e3f2fd; color: #0d47a1; }
+.bc-text   { font-size: 12.5px; color: #444; line-height: 1.5; background: #fff; border-radius: 6px; padding: 6px 8px; margin-bottom: 5px; }
+.bc-meta   { font-size: 11px; color: #aaa; display: flex; gap: 8px; }
+.no-batch  { font-size: 13px; color: #ccc; font-style: italic; text-align: center; margin-top: 20px; }
+
+.clear-btn { font-size: 11px; color: #e53935; background: none; border: none; cursor: pointer; margin-left: auto; }
+.clear-btn:hover { text-decoration: underline; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Chat column ── -->
+  <div class="chat-col">
+    <div class="chat-header">
+      <div class="hdr-avatar">CS</div>
+      <div class="hdr-info">
+        <h3>Customer Support</h3>
+        <div class="hdr-sub" id="hdrSub">online</div>
+      </div>
+      <div class="hdr-actions">
+        <button class="hdr-btn" title="Clear chat" onclick="clearSession()">&#x1F5D1;</button>
+      </div>
+    </div>
+
+    <!-- Dual timer bars -->
+    <div class="timer-bars">
+      <div class="bar-labels" id="barLabels">
+        <span id="batchLabel">⬛ Batch: 40s</span>
+        <span id="sessionLabel2">🟠 Session: 60s</span>
+      </div>
+      <div class="batch-bar" id="batchBar">
+        <div class="batch-fill" id="batchFill"></div>
+      </div>
+      <div class="session-bar" id="sessionBar">
+        <div class="session-fill" id="sessionFill"></div>
+      </div>
+    </div>
+
+    <div class="messages-wrap" id="msgWrap">
+      <div class="date-sep"><span>Today</span></div>
+    </div>
+
+    <!-- Quick chips -->
+    <div class="quick-bar">
+      <span style="font-size:11px;color:#999;align-self:center;flex-shrink:0;">Quick:</span>
+      <span class="qchip" onclick="quickSend('The product should be a mobile app')">Mobile app</span>
+      <span class="qchip" onclick="quickSend('Needs dark mode and offline support')">Dark + offline</span>
+      <span class="qchip" onclick="quickSend('Target users aged 18–35')">18–35 target</span>
+      <span class="qchip" onclick="quickSend('Must support 5 languages')">5 languages</span>
+      <span class="qchip" onclick="quickSend('Budget is $50,000')">Budget $50k</span>
+    </div>
+
+    <!-- Input bar -->
+    <div class="input-bar">
+      <textarea class="input-box" id="msgInput" rows="1"
+        placeholder="Type a message..."
+        oninput="onTyping(); autoResize(this)"
+        onkeydown="handleKey(event)"></textarea>
+      <button class="done-btn" onclick="sendKeyword()" title="Mark spec as done">Done ✓</button>
+      <button class="send-btn" onclick="sendMessage()" title="Send">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Right panel ── -->
+  <div class="right-col">
+    <div class="rp-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <h3>Spec Storage</h3>
+        <div class="rp-subhead" id="sessionLabel">session: —</div>
+      </div>
+      <button class="clear-btn" onclick="clearSession()">Clear all</button>
+    </div>
+
+    <div class="rp-stats">
+      <div class="stat-box"><div class="stat-val" id="statBatches">0</div><div class="stat-lbl">Batches saved</div></div>
+      <div class="stat-box"><div class="stat-val" id="statMsgs">0</div><div class="stat-lbl">Messages total</div></div>
+      <div class="stat-box"><div class="stat-val" id="statBatch">40s</div><div class="stat-lbl">Batch window</div></div>
+      <div class="stat-box"><div class="stat-val" id="statBuf">0</div><div class="stat-lbl">Buffered now</div></div>
+    </div>
+
+    <div class="live-section">
+      <div class="section-title">Live buffer</div>
+      <div id="liveBufList"><div class="buf-empty">Nothing buffered yet</div></div>
+      <button class="save-btn" id="saveBtn" onclick="manualFlush()" disabled>Save now (manual)</button>
+    </div>
+
+    <!-- Grouped session summary (shown after yes) -->
+    <div id="groupSection" style="display:none"></div>
+
+    <div class="batch-list" id="batchList">
+      <div class="no-batch">No batches saved yet</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SESSION_ID = 'sess_' + Math.random().toString(36).slice(2, 7);
+document.getElementById('sessionLabel').textContent = 'session: ' + SESSION_ID;
+
+const BASE = 'http://localhost:3000';
+
+let localBuffer      = [];
+let batchMs          = 40000;   // 40s fixed batch window
+let sessionMs        = 60000;   // 60s session nudge
+let batchRaf         = null;
+let sessionRaf       = null;
+let batchStarted     = null;
+let sessionStarted   = null;
+let typingPingTimer  = null;
+let typingStopTimer  = null;
+let nudgeShown       = false;
+let nudgeMsgEl       = null;
+let customerTypingEl = null;
+let lastBatchCount   = 0;
+let totalMsgs        = 0;
+let isConnected      = false;
+let sessionActive    = false;   // true once first message sent
+
+// ── Helpers ────────────────────────────────────────────────────────────
+function now() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function scrollBottom() {
+  const w = document.getElementById('msgWrap');
+  setTimeout(() => { w.scrollTop = w.scrollHeight; }, 30);
+}
+
+function escHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Message rendering ──────────────────────────────────────────────────
+function addOutMsg(text, tagHtml) {
+  const wrap = document.getElementById('msgWrap');
+  const row  = document.createElement('div');
+  row.className = 'msg-row out';
+  row.innerHTML = `
+    <div class="bubble out">
+      ${escHtml(text)}${tagHtml ? ' ' + tagHtml : ''}
+      <div class="bubble-meta">${now()} <span class="tick">✓✓</span></div>
+    </div>`;
+  wrap.appendChild(row);
+  scrollBottom();
+  return row;
+}
+
+function addInMsg(text, withBtns) {
+  removeCustomerTyping();
+  const wrap = document.getElementById('msgWrap');
+  const row  = document.createElement('div');
+  row.className = 'msg-row in';
+  row.innerHTML = `
+    <div class="msg-av av-cs">CS</div>
+    <div class="bubble in">
+      ${text}
+      ${withBtns ? `<div class="nudge-btns">
+        <button class="nbtn nbtn-yes" onclick="confirmNudge('yes')">Yes, save it ✓</button>
+        <button class="nbtn nbtn-no"  onclick="confirmNudge('no')">No, still going</button>
+      </div>` : ''}
+      <div class="bubble-meta">${now()}</div>
+    </div>`;
+  wrap.appendChild(row);
+  scrollBottom();
+  return row;
+}
+
+function addSysMsg(text) {
+  const wrap = document.getElementById('msgWrap');
+  const row  = document.createElement('div');
+  row.className = 'msg-row sys';
+  row.innerHTML = `<div class="bubble sys-bubble">${text}</div>`;
+  wrap.appendChild(row);
+  scrollBottom();
+}
+
+function showCustomerTyping() {
+  if (customerTypingEl) return;
+  const wrap = document.getElementById('msgWrap');
+  const row  = document.createElement('div');
+  row.className = 'msg-row in';
+  row.innerHTML = `<div class="msg-av av-cs">CS</div><div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  wrap.appendChild(row);
+  customerTypingEl = row;
+  scrollBottom();
+}
+
+function removeCustomerTyping() {
+  if (customerTypingEl) { customerTypingEl.remove(); customerTypingEl = null; }
+}
+
+// ── Dual Timer bars ────────────────────────────────────────────────────
+// BATCH bar (green, resets on each message, 40s)
+function startBatchTimer() {
+  batchStarted = performance.now();
+  document.getElementById('batchBar').classList.add('active');
+  document.getElementById('barLabels').classList.add('active');
+  if (batchRaf) cancelAnimationFrame(batchRaf);
+  function tick(ts) {
+    const elapsed = ts - batchStarted;
+    const pct = Math.max(0, 1 - elapsed / batchMs);
+    const secLeft = Math.max(0, Math.ceil((batchMs - elapsed) / 1000));
+    document.getElementById('batchFill').style.width = (pct * 100).toFixed(2) + '%';
+    document.getElementById('batchLabel').textContent = `⬛ Batch: ${secLeft}s`;
+    if (pct > 0) batchRaf = requestAnimationFrame(tick);
+    else {
+      document.getElementById('batchBar').classList.remove('active');
+      document.getElementById('batchLabel').textContent = '⬛ Batch: 40s';
+    }
+  }
+  batchRaf = requestAnimationFrame(tick);
+}
+
+function resetBatchTimer() { batchStarted = performance.now(); }
+
+function stopBatchTimer() {
+  if (batchRaf) { cancelAnimationFrame(batchRaf); batchRaf = null; }
+  document.getElementById('batchFill').style.width = '0%';
+  document.getElementById('batchBar').classList.remove('active');
+  document.getElementById('batchLabel').textContent = '⬛ Batch: 40s';
+}
+
+// SESSION bar (orange, starts once, 60s)
+function startSessionTimer() {
+  sessionStarted = performance.now();
+  document.getElementById('sessionBar').classList.add('active');
+  document.getElementById('barLabels').classList.add('active');
+  if (sessionRaf) cancelAnimationFrame(sessionRaf);
+  function tick(ts) {
+    const elapsed = ts - sessionStarted;
+    const pct = Math.max(0, 1 - elapsed / sessionMs);
+    const secLeft = Math.max(0, Math.ceil((sessionMs - elapsed) / 1000));
+    document.getElementById('sessionFill').style.width = (pct * 100).toFixed(2) + '%';
+    document.getElementById('sessionLabel2').textContent = `🟠 Session: ${secLeft}s`;
+    if (pct > 0) sessionRaf = requestAnimationFrame(tick);
+    else {
+      document.getElementById('sessionBar').classList.remove('active');
+      document.getElementById('sessionLabel2').textContent = '🟠 Session: 60s';
+    }
+  }
+  sessionRaf = requestAnimationFrame(tick);
+}
+
+function stopSessionTimer() {
+  if (sessionRaf) { cancelAnimationFrame(sessionRaf); sessionRaf = null; }
+  document.getElementById('sessionFill').style.width = '0%';
+  document.getElementById('sessionBar').classList.remove('active');
+  document.getElementById('sessionLabel2').textContent = '🟠 Session: 60s';
+  document.getElementById('barLabels').classList.remove('active');
+}
+
+function stopAllTimers() {
+  stopBatchTimer();
+  stopSessionTimer();
+}
+
+// ── Typing indicator ───────────────────────────────────────────────────
+function onTyping() {
+  document.getElementById('hdrSub').textContent = 'you are typing...';
+  clearInterval(typingPingTimer);
+  clearTimeout(typingStopTimer);
+  typingPingTimer = setInterval(async () => {
+    try { await post('/typing', { sessionId: SESSION_ID }); } catch(e) {}
+  }, 1000);
+  typingStopTimer = setTimeout(() => {
+    clearInterval(typingPingTimer);
+    document.getElementById('hdrSub').textContent = isConnected ? 'online' : 'connecting...';
+  }, 3000);
+}
+
+// ── API ────────────────────────────────────────────────────────────────
+async function post(endpoint, data) {
+  const r = await fetch(BASE + endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  return r.json();
+}
+
+// ── Send ───────────────────────────────────────────────────────────────
+const END_KW = ['done', "that's all", "that's it", 'end', 'finish', 'complete', 'over', 'thats all', 'that is all'];
+
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+  clearInterval(typingPingTimer);
+  clearTimeout(typingStopTimer);
+  document.getElementById('hdrSub').textContent = isConnected ? 'online' : 'connecting...';
+  await doSend(text);
+}
+
+async function quickSend(text) { await doSend(text); }
+async function sendKeyword()   { await doSend('done'); }
+
+async function doSend(text) {
+  const isEnd = END_KW.includes(text.toLowerCase());
+
+  if (!isEnd) {
+    localBuffer.push(text);
+    updateLivePanel(localBuffer);
+    addOutMsg(text, `<span class="status-tag st-buf">buffering</span>`);
+
+    // Start batch timer on first message of batch; reset on subsequent
+    if (localBuffer.length === 1) startBatchTimer(); else resetBatchTimer();
+
+    // Start session timer only once ever
+    if (!sessionActive) {
+      sessionActive = true;
+      startSessionTimer();
+    }
+
+    if (nudgeShown) { nudgeShown = false; nudgeMsgEl = null; }
+  } else {
+    addOutMsg(text, `<span class="status-tag st-key">sending done</span>`);
+  }
+
+  try {
+    const data = await post('/message', { sessionId: SESSION_ID, text });
+    if (data.status === 'grouped' && data.result) {
+      onGrouped(data.result, 'keyword');
+    }
+    isConnected = true;
+    document.getElementById('hdrSub').textContent = 'online';
+  } catch(e) {
+    isConnected = false;
+    document.getElementById('hdrSub').textContent = 'server offline — run node server.js';
+    addSysMsg('⚠ Could not reach server. Run <b>node server.js</b> first.');
+  }
+}
+
+// ── Nudge confirm ──────────────────────────────────────────────────────
+async function confirmNudge(answer) {
+  if (nudgeMsgEl) nudgeMsgEl.querySelectorAll('.nbtn').forEach(b => b.disabled = true);
+  try {
+    const data = await post('/confirm', { sessionId: SESSION_ID, answer });
+    if (data.status === 'grouped' && data.result) {
+      onGrouped(data.result, 'confirmed');
+    } else {
+      // User said no — still going
+      showCustomerTyping();
+      setTimeout(() => {
+        addInMsg("No problem! Take your time, I'm still listening 👂");
+        // Restart timers for another round
+        startSessionTimer();
+        if (localBuffer.length > 0) startBatchTimer();
+      }, 700);
+      nudgeShown = false;
+    }
+  } catch(e) {}
+}
+
+// ── Called when server groups the session ──────────────────────────────
+function onGrouped(result, trigger) {
+  localBuffer = [];
+  stopAllTimers();
+  sessionActive = false;
+  nudgeShown    = false;
+  nudgeMsgEl    = null;
+  updateLivePanel([]);
+
+  const grouped = result.grouped || result;
+
+  // Show grouped summary in right panel
+  showGroupSummary(grouped);
+
+  // Chat confirmation message
+  setTimeout(() => {
+    showCustomerTyping();
+    setTimeout(() => {
+      const totalB = grouped.totalBatches || '?';
+      const totalM = grouped.totalMessages || '?';
+      addInMsg(
+        `✅ <b>Session complete!</b> I've captured all ${totalM} messages across ${totalB} batch${totalB !== 1 ? 'es' : ''} into one specification. <span class="status-tag st-grp">grouped</span>`,
+        false
+      );
+    }, 900);
+  }, 300);
+
+  loadBatches();
+}
+
+// ── Show grouped session summary in right panel ─────────────────────
+function showGroupSummary(grouped) {
+  const section = document.getElementById('groupSection');
+  if (!grouped || !grouped.groupedCombined) { section.style.display = 'none'; return; }
+
+  const ts = grouped.groupedAt ? new Date(grouped.groupedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+  section.style.display = 'block';
+  section.innerHTML = `
+    <div class="group-card">
+      <div class="gc-title">
+        📋 Session Summary
+        <span class="gc-badge">${grouped.totalBatches || 0} batches · ${grouped.totalMessages || 0} msgs</span>
+      </div>
+      <div class="gc-text">${escHtml(grouped.groupedCombined)}</div>
+      <div class="gc-meta">Grouped at ${ts} · reason: ${grouped.groupReason || ''}</div>
+    </div>`;
+}
+
+// ── Manual save (batch only) ────────────────────────────────────────────
+async function manualFlush() {
+  try {
+    const data = await post('/flush', { sessionId: SESSION_ID });
+    if (data.batch) {
+      localBuffer = [];
+      updateLivePanel([]);
+      stopBatchTimer();
+      showCustomerTyping();
+      setTimeout(() => {
+        addInMsg(`Batch saved manually — ${data.batch.messageCount} messages stored. <span class="status-tag st-man">manual</span>`);
+      }, 800);
+      loadBatches();
+    }
+  } catch(e) {}
+}
+
+// ── Live buffer panel ──────────────────────────────────────────────────
+function updateLivePanel(msgs) {
+  const list = document.getElementById('liveBufList');
+  const btn  = document.getElementById('saveBtn');
+  document.getElementById('statBuf').textContent = msgs.length;
+  if (msgs.length === 0) {
+    list.innerHTML = '<div class="buf-empty">Nothing buffered yet</div>';
+    btn.disabled = true;
+    return;
+  }
+  list.innerHTML = msgs.map((m, i) =>
+    `<div class="buf-item"><span class="buf-num">${i+1}.</span>${escHtml(m)}</div>`
+  ).join('');
+  btn.disabled = false;
+}
+
+// ── Load saved batches ─────────────────────────────────────────────────
+async function loadBatches() {
+  try {
+    const data = await fetch(`${BASE}/specs?sessionId=${SESSION_ID}`).then(r => r.json());
+    const batches = data.batches || [];
+    document.getElementById('statBatches').textContent = batches.length;
+    totalMsgs = batches.reduce((s, b) => s + b.messageCount, 0);
+    document.getElementById('statMsgs').textContent = totalMsgs;
+
+    // Show group summary if already grouped
+    if (data.groupedCombined) showGroupSummary(data);
+
+    if (batches.length === lastBatchCount) return;
+    lastBatchCount = batches.length;
+
+    const list = document.getElementById('batchList');
+    if (!batches.length) { list.innerHTML = '<div class="no-batch">No batches saved yet</div>'; return; }
+
+    const tagClass = { silence_40s: 'tag-timer', keyword: 'tag-key', confirmed: 'tag-conf', manual: 'tag-man', manual_group: 'tag-man' };
+    const tagLabel = { silence_40s: '40s timer', keyword: 'keyword', confirmed: 'confirmed', manual: 'manual', manual_group: 'manual group' };
+
+    list.innerHTML = [...batches].reverse().map(b => `
+      <div class="batch-card">
+        <div class="bc-header">
+          <span class="bc-title">Batch #${b.batchId}</span>
+          <span class="bc-tag ${tagClass[b.flushReason]||''}">${tagLabel[b.flushReason]||b.flushReason}</span>
+        </div>
+        <div class="bc-text">${escHtml(b.combined)}</div>
+        <div class="bc-meta">
+          <span>${b.messageCount} msg</span>
+          <span>·</span>
+          <span>window: 40s</span>
+          <span>·</span>
+          <span>${new Date(b.savedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+// ── Poll server status ─────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const s = await fetch(`${BASE}/status?sessionId=${SESSION_ID}`).then(r => r.json());
+    localBuffer = s.messages || [];
+    updateLivePanel(localBuffer);
+
+    // Nudge: server detected 60s has passed → show in chat
+    if (s.nudgePending && !nudgeShown) {
+      nudgeShown = true;
+      showCustomerTyping();
+      setTimeout(() => {
+        nudgeMsgEl = addInMsg(
+          "⏰ It's been 60 seconds — are you done specifying the product?",
+          true
+        );
+      }, 800);
+    }
+    if (!s.nudgePending && nudgeShown && nudgeMsgEl) {
+      nudgeShown = false;
+    }
+
+    isConnected = true;
+  } catch(e) {
+    isConnected = false;
+  }
+}
+
+// ── Clear ──────────────────────────────────────────────────────────────
+async function clearSession() {
+  try { await fetch(`${BASE}/specs?sessionId=${SESSION_ID}`, { method: 'DELETE' }); } catch(e) {}
+  localBuffer = [];
+  stopAllTimers();
+  sessionActive = false;
+  nudgeShown = false;
+  nudgeMsgEl = null;
+  updateLivePanel([]);
+  lastBatchCount = 0;
+  document.getElementById('msgWrap').innerHTML = '<div class="date-sep"><span>Today</span></div>';
+  document.getElementById('groupSection').style.display = 'none';
+  addInMsg("Chat cleared. Ready for a new specification!");
+  loadBatches();
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────
+function boot() {
+  setTimeout(() => {
+    showCustomerTyping();
+    setTimeout(() => {
+      addInMsg("Hi! Please describe the product you need. Take your time — send as many messages as you like.<br><small style='color:#aaa'>⬛ Each pause of 40s saves a batch &nbsp;|&nbsp; 🟠 After 60s I'll check if you're done</small>");
+    }, 1000);
+  }, 400);
+}
+
+setInterval(pollStatus,  1500);
+setInterval(loadBatches, 2500);
+boot();
+</script>
+</body>
+</html>
