@@ -171,6 +171,77 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+/* ── Export button in right panel header ── */
+.export-rp-btn {
+  font-size: 11px; font-weight: 600; color: #075e54;
+  background: #e8f5e9; border: 1.5px solid #a5d6a7;
+  border-radius: 12px; padding: 3px 10px; cursor: pointer;
+}
+.export-rp-btn:hover { background: #c8e6c9; }
+
+/* ── Export modal overlay ── */
+.export-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 1000;
+  align-items: center; justify-content: center;
+}
+.export-overlay.open { display: flex; }
+
+.export-modal {
+  background: #fff; border-radius: 14px; width: 560px; max-width: 95vw;
+  max-height: 88vh; display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,.25); overflow: hidden;
+}
+
+.em-header {
+  padding: 14px 18px; border-bottom: 1px solid #eee;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.em-title { font-size: 15px; font-weight: 700; color: #222; }
+.em-close { background: none; border: none; font-size: 16px; cursor: pointer; color: #999; padding: 2px 6px; border-radius: 6px; }
+.em-close:hover { background: #f0f0f0; color: #333; }
+
+.em-format-row {
+  display: flex; gap: 6px; padding: 12px 18px 0;
+}
+.fmt-btn {
+  padding: 5px 16px; border-radius: 20px; border: 1.5px solid #ddd;
+  background: #f7f7f7; font-size: 13px; font-weight: 500; cursor: pointer; color: #555;
+  transition: all .15s;
+}
+.fmt-btn.active { background: #075e54; color: #fff; border-color: #075e54; }
+.fmt-btn:hover:not(.active) { background: #eee; }
+
+.em-scope-row {
+  display: flex; gap: 16px; padding: 10px 18px 0;
+}
+.scope-opt { font-size: 12.5px; color: #555; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+.em-preview {
+  flex: 1; margin: 10px 18px; border-radius: 8px;
+  background: #f4f4f4; border: 1px solid #e0e0e0;
+  padding: 12px 14px; font-size: 12px; line-height: 1.6;
+  color: #333; overflow-y: auto; white-space: pre-wrap;
+  word-break: break-word; font-family: 'SFMono-Regular', Consolas, monospace;
+  min-height: 200px; max-height: 340px;
+}
+
+.em-footer {
+  padding: 10px 18px 14px; border-top: 1px solid #eee;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.em-hint { font-size: 11.5px; color: #aaa; }
+.em-copy-btn {
+  padding: 7px 16px; border-radius: 20px; border: 1.5px solid #ccc;
+  background: #fff; font-size: 13px; cursor: pointer; color: #444; font-weight: 500;
+}
+.em-copy-btn:hover { background: #f5f5f5; }
+.em-dl-btn {
+  padding: 7px 18px; border-radius: 20px; border: none;
+  background: #075e54; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.em-dl-btn:hover { background: #128c7e; }
 </style>
 </head>
 <body>
@@ -186,6 +257,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
         <div class="hdr-sub" id="hdrSub">online</div>
       </div>
       <div class="hdr-actions">
+        <button class="hdr-btn" title="Export chat" onclick="openExport()">&#x1F4E4;</button>
         <button class="hdr-btn" title="Clear chat" onclick="clearSession()">&#x1F5D1;</button>
       </div>
     </div>
@@ -238,7 +310,10 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
         <h3>Spec Storage</h3>
         <div class="rp-subhead" id="sessionLabel">session: —</div>
       </div>
-      <button class="clear-btn" onclick="clearSession()">Clear all</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="export-rp-btn" onclick="openExport()">⬇ Export</button>
+        <button class="clear-btn" onclick="clearSession()">Clear all</button>
+      </div>
     </div>
 
     <div class="rp-stats">
@@ -262,6 +337,37 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     </div>
   </div>
 
+</div>
+
+<!-- ── Export Modal ── -->
+<div id="exportOverlay" class="export-overlay" onclick="closeExport(event)">
+  <div class="export-modal">
+    <div class="em-header">
+      <span class="em-title">📤 Export Chat</span>
+      <button class="em-close" onclick="closeExportDirect()">✕</button>
+    </div>
+
+    <div class="em-format-row">
+      <button class="fmt-btn active" id="fmtJson"     onclick="setFmt('json')">JSON</button>
+      <button class="fmt-btn"        id="fmtText"     onclick="setFmt('text')">Plain Text</button>
+      <button class="fmt-btn"        id="fmtMarkdown" onclick="setFmt('markdown')">Markdown</button>
+    </div>
+
+    <div class="em-scope-row">
+      <label class="scope-opt"><input type="radio" name="scope" value="session" checked onchange="renderPreview()"> Current session only</label>
+      <label class="scope-opt"><input type="radio" name="scope" value="all"     onchange="renderPreview()"> All sessions</label>
+    </div>
+
+    <pre class="em-preview" id="emPreview"></pre>
+
+    <div class="em-footer">
+      <span class="em-hint" id="emHint"></span>
+      <div style="display:flex;gap:8px;">
+        <button class="em-copy-btn" onclick="copyExport()">📋 Copy</button>
+        <button class="em-dl-btn"   onclick="downloadExport()">⬇ Download</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -693,6 +799,138 @@ async function clearSession() {
   document.getElementById('groupSection').style.display = 'none';
   addInMsg("Chat cleared. Ready for a new specification!");
   loadBatches();
+}
+
+// ── Export ─────────────────────────────────────────────────────────────
+let exportFmt  = 'json';
+let exportData = null;   // cached specs from server
+
+async function openExport() {
+  document.getElementById('exportOverlay').classList.add('open');
+  // fetch fresh specs
+  try {
+    const all = await fetch(`${BASE}/specs`).then(r => r.json());
+    exportData = all;
+  } catch(e) {
+    exportData = null;
+  }
+  renderPreview();
+}
+
+function closeExport(e) {
+  if (e.target === document.getElementById('exportOverlay')) closeExportDirect();
+}
+function closeExportDirect() {
+  document.getElementById('exportOverlay').classList.remove('open');
+}
+
+function setFmt(fmt) {
+  exportFmt = fmt;
+  document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('fmt' + fmt.charAt(0).toUpperCase() + fmt.slice(1)).classList.add('active');
+  renderPreview();
+}
+
+function getScope() {
+  return document.querySelector('input[name="scope"]:checked').value;
+}
+
+function getScopedData() {
+  if (!exportData) return { sessions: {} };
+  if (getScope() === 'session') {
+    return { sessions: { [SESSION_ID]: exportData.sessions?.[SESSION_ID] || { batches: [] } } };
+  }
+  return exportData;
+}
+
+function buildExportString(fmt) {
+  const data    = getScopedData();
+  const sessions = data.sessions || {};
+  const ts      = new Date().toISOString();
+
+  if (fmt === 'json') {
+    return JSON.stringify({ exportedAt: ts, sessionId: SESSION_ID, ...data }, null, 2);
+  }
+
+  if (fmt === 'text') {
+    let out = `SPEC CHAT EXPORT\nExported: ${new Date().toLocaleString()}\nSession: ${SESSION_ID}\n`;
+    out += '='.repeat(50) + '\n\n';
+    for (const [sid, sess] of Object.entries(sessions)) {
+      out += `SESSION: ${sid}\n`;
+      if (sess.groupedCombined) {
+        out += `\n[GROUPED SUMMARY]\n${sess.groupedCombined}\n`;
+        out += `Grouped at: ${sess.groupedAt || ''}\n\n`;
+      }
+      (sess.batches || []).forEach(b => {
+        out += `\nBatch #${b.batchId} (${b.flushReason}) — ${new Date(b.savedAt).toLocaleTimeString()}\n`;
+        b.messages.forEach((m, i) => { out += `  ${i+1}. ${m}\n`; });
+        out += `  → Combined: ${b.combined}\n`;
+      });
+      out += '\n' + '-'.repeat(50) + '\n';
+    }
+    return out;
+  }
+
+  if (fmt === 'markdown') {
+    let out = `# Spec Chat Export\n\n`;
+    out += `**Exported:** ${new Date().toLocaleString()}  \n`;
+    out += `**Session:** \`${SESSION_ID}\`\n\n---\n\n`;
+    for (const [sid, sess] of Object.entries(sessions)) {
+      out += `## Session \`${sid}\`\n\n`;
+      if (sess.groupedCombined) {
+        out += `### 📋 Grouped Summary\n\n`;
+        out += `> ${sess.groupedCombined.replace(/\n/g, '\n> ')}\n\n`;
+        out += `*Grouped at: ${sess.groupedAt || ''}*\n\n`;
+      }
+      if (sess.batches?.length) {
+        out += `### Batches\n\n`;
+        sess.batches.forEach(b => {
+          out += `#### Batch #${b.batchId} — \`${b.flushReason}\`\n`;
+          out += `*Saved: ${new Date(b.savedAt).toLocaleTimeString()}*\n\n`;
+          b.messages.forEach((m, i) => { out += `${i+1}. ${m}\n`; });
+          out += `\n**Combined:** ${b.combined}\n\n`;
+        });
+      }
+      out += '---\n\n';
+    }
+    return out;
+  }
+  return '';
+}
+
+function renderPreview() {
+  const str = buildExportString(exportFmt);
+  document.getElementById('emPreview').textContent = str;
+
+  const data = getScopedData();
+  const sessions = Object.keys(data.sessions || {});
+  const totalBatches = sessions.reduce((s, sid) => s + (data.sessions[sid]?.batches?.length || 0), 0);
+  const totalMsgsEx  = sessions.reduce((s, sid) => s + (data.sessions[sid]?.batches || []).reduce((ss, b) => ss + b.messageCount, 0), 0);
+  const ext = exportFmt === 'json' ? 'json' : exportFmt === 'markdown' ? 'md' : 'txt';
+  document.getElementById('emHint').textContent = `${sessions.length} session${sessions.length !== 1 ? 's' : ''} · ${totalBatches} batch${totalBatches !== 1 ? 'es' : ''} · ${totalMsgsEx} messages · .${ext}`;
+}
+
+async function copyExport() {
+  const str = buildExportString(exportFmt);
+  try {
+    await navigator.clipboard.writeText(str);
+    const btn = document.querySelector('.em-copy-btn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+  } catch(e) {}
+}
+
+function downloadExport() {
+  const str  = buildExportString(exportFmt);
+  const ext  = exportFmt === 'json' ? 'json' : exportFmt === 'markdown' ? 'md' : 'txt';
+  const mime = exportFmt === 'json' ? 'application/json' : 'text/plain';
+  const date = new Date().toISOString().slice(0, 10);
+  const name = `spec-chat-${SESSION_ID}-${date}.${ext}`;
+  const blob = new Blob([str], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────
